@@ -1,4 +1,4 @@
-# Engr-7B-FitBit
+# Personal FitBit
 
 Java code run on an Arduino that progams a make shift FitBit
 - measures altitude the current user is at
