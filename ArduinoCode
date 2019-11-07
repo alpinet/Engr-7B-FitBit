@@ -1,0 +1,169 @@
+//Accelerometer initialization 
+#include <Wire.h>
+#include <DFRobot_LIS2DH12.h>
+DFRobot_LIS2DH12 LIS; //Accelerometer
+
+//Barometer initialization 
+#include "DFRobot_BMP388.h"
+#include "DFRobot_BMP388_I2C.h"
+#include "Wire.h"
+#include "SPI.h"
+#include "math.h"
+#include "bmp3_defs.h"
+#define CALIBRATE_Altitude
+
+DFRobot_BMP388_I2C bmp388;
+float seaLevel;
+
+int flightsClimbed = 0;
+int previous = 0;
+int goal_steps = 0 //goal number of steps
+//LED initialization of variables 
+
+int LED = 5;
+byte b = 0;
+
+// Step count
+int step1 = 0;
+int last = 0;
+
+void setup() {
+  //Accelerometer setup
+  Wire.begin();
+  Serial.begin(115200);
+  while(!Serial);
+  delay(100);
+  // Set measurement range  
+  // Ga: LIS2DH12_RANGE_2GA
+  // Ga: LIS2DH12_RANGE_4GA
+  // Ga: LIS2DH12_RANGE_8GA
+  // Ga: LIS2DH12_RANGE_16GA
+  while(LIS.init(LIS2DH12_RANGE_16GA) == -1){  //Equipment connection exception or I2C address error
+    Serial.println("No I2C devices found");
+    delay(1000);
+  }
+  //Barometer setup
+  /* Initialize the serial port*/
+  Serial.begin(9600);
+  /* Initialize bmp388*/
+  while (bmp388.begin()) {
+    Serial.println("Initialize error!");
+    delay(1000);
+  }
+  delay(100);
+seaLevel = bmp388.readSeaLevel(525.0);
+  //Serial.print("seaLevel : ");
+  //Serial.print(seaLevel);
+  //Serial.println(" Pa");
+  
+  // LED setup
+  pinMode(LED, OUTPUT);
+  Serial.begin(9600);
+
+  // get user input of goal number of steps
+  if (Serial.available() > 0) {
+    goal_steps = Serial.read();
+  }
+  }
+  
+  
+
+
+ //Accelerometer loop
+  /*!
+ *  @brief Print the position result.
+ */
+void acceleration(void)
+{
+  int16_t x, y, z;
+  delay(300);
+  LIS.readXYZ(x, y, z);
+  LIS.mgScale(x, y, z);
+  if (y-last > 125|| y-last < -125){
+    step1++;
+    Serial.write(1);
+    }
+ 
+  Serial.print("Step count: ");
+  Serial.println(step1);
+  /*Serial.println("");
+  Serial.print("Acceleration x: "); //print acceleration
+  Serial.print(x);
+  Serial.print(" mg \ty: ");
+  Serial.print(y);
+  Serial.print(" mg \tz: ");
+  Serial.print(z);
+  Serial.println(" mg"); */
+  
+  // LED loop
+// put your main code here, to run repeatedly:
+  if (y-last > 125 || y-last<-125){
+    analogWrite(LED,50);
+    delay(100);
+    analogWrite(LED,0);
+  }
+
+  if (step1 > goal_steps){
+    analogWrite(LED,50);
+    delay(50);
+    analogWrite(LED,0);
+  }
+/*if(Serial.available()) {
+    b = Serial.read();
+  }
+  if(b==1){
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.write(6);
+  }
+  else{
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.write(8); */
+     last = y;
+}
+
+void loop() {
+//Accelerometer loop cont.
+  acceleration();
+ 
+
+    
+// Barometer Loop
+#ifdef CALIBRATE_Altitude
+  /* Read the calibrated altitude */
+  float altitude = bmp388.readCalibratedAltitude(seaLevel);
+  Serial.print("calibrate Altitude : ");
+  Serial.print(altitude);
+  Serial.println(" m");
+  if(altitude - previous > 3.8 || altitude - previous < -3.8) {
+    flightsClimbed++;
+    previous = altitude;
+  }
+  Serial.print("Flights of Stairs Climbed: ");
+  Serial.println(flightsClimbed - 1);
+  
+#else
+  /* Read the altitude */
+  float altitude = bmp388.readAltitude();
+  Serial.print("Altitude : ");
+  Serial.print(altitude);
+  Serial.println(" m");
+#endif
+  //delay(100);
+  /* Read the atmospheric pressure, print data via serial port.*/
+  float Pressure = bmp388.readPressure();
+  //Serial.print("Pressure : ");
+  //Serial.print(Pressure);
+  //Serial.println(" Pa");
+  //delay(100);
+  /* Read the temperature, print data via serial port.*/
+  float Temperature = bmp388.readTemperature();
+  Serial.print("Temperature : ");
+  Serial.print(Temperature);
+  Serial.println(" C");
+  Serial.println();
+  delay(500);
+  } 
+
+
+
+  
